@@ -69,9 +69,11 @@ async function handleSelectSeasons(interaction) {
   const lib = getLibraryByName(libraryName);
   const selected = interaction.values;
   const isAll = selected.includes('all');
-  const requestedSeasonNumbers = new Set((details.mediaInfo?.seasons || []).map(s => s.seasonNumber));
+  const unavailableSeasonNumbers = new Set(
+    (details.mediaInfo?.seasons || []).filter(s => s.status && s.status > 1).map(s => s.seasonNumber)
+  );
   const allSeasonNumbers = Array.isArray(details.seasons)
-    ? details.seasons.filter(s => s.seasonNumber > 0 && !requestedSeasonNumbers.has(s.seasonNumber)).map(s => s.seasonNumber)
+    ? details.seasons.filter(s => s.seasonNumber > 0 && !unavailableSeasonNumbers.has(s.seasonNumber)).map(s => s.seasonNumber)
     : [];
   const seasons = isAll ? allSeasonNumbers : selected.map(Number);
   const confirmRow = embeds.buildConfirmRow('tv', details.id, seasons);

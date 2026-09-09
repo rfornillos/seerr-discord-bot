@@ -81,11 +81,14 @@ function buildSearchSelect(results) {
 }
 
 function buildSeasonSelect(tvDetails) {
-  // Jellyseerr only adds a season to mediaInfo.seasons once it has been requested (pending/processing/
-  // partially_available/available). Exclude those so a show that's partially requested still lets the
-  // user pick whichever seasons remain, instead of only ever offering the full list or blocking entirely.
-  const requestedSeasonNumbers = new Set((tvDetails.mediaInfo?.seasons || []).map(s => s.seasonNumber));
-  const seasons = (tvDetails.seasons || []).filter(s => s.seasonNumber > 0 && !requestedSeasonNumbers.has(s.seasonNumber));
+  // mediaInfo.seasons can contain an entry for every season once the show exists in Jellyseerr's DB,
+  // not just ones that were requested — each entry has its own status (1 = unknown/not requested,
+  // 2 = pending, 3 = processing, 4 = partially_available, 5 = available). Only exclude seasons whose
+  // status is actually > 1, so unrequested seasons stay selectable even if they appear in the array.
+  const unavailableSeasonNumbers = new Set(
+    (tvDetails.mediaInfo?.seasons || []).filter(s => s.status && s.status > 1).map(s => s.seasonNumber)
+  );
+  const seasons = (tvDetails.seasons || []).filter(s => s.seasonNumber > 0 && !unavailableSeasonNumbers.has(s.seasonNumber));
   if (!seasons.length) return null;
   const options = [
     { label: 'All remaining seasons', description: `Request all ${seasons.length} remaining season(s)`, value: 'all' },
