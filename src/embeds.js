@@ -81,10 +81,14 @@ function buildSearchSelect(results) {
 }
 
 function buildSeasonSelect(tvDetails) {
-  const seasons = (tvDetails.seasons || []).filter(s => s.seasonNumber > 0);
+  // Jellyseerr only adds a season to mediaInfo.seasons once it has been requested (pending/processing/
+  // partially_available/available). Exclude those so a show that's partially requested still lets the
+  // user pick whichever seasons remain, instead of only ever offering the full list or blocking entirely.
+  const requestedSeasonNumbers = new Set((tvDetails.mediaInfo?.seasons || []).map(s => s.seasonNumber));
+  const seasons = (tvDetails.seasons || []).filter(s => s.seasonNumber > 0 && !requestedSeasonNumbers.has(s.seasonNumber));
   if (!seasons.length) return null;
   const options = [
-    { label: 'All seasons', description: `Request all ${seasons.length} season(s)`, value: 'all' },
+    { label: 'All remaining seasons', description: `Request all ${seasons.length} remaining season(s)`, value: 'all' },
     ...seasons.slice(0, 24).map(s => ({ label: `Season ${s.seasonNumber}`, description: s.name || `Season ${s.seasonNumber}`, value: String(s.seasonNumber) })),
   ];
   return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('select_seasons').setPlaceholder('Choose seasons…').setMinValues(1).setMaxValues(Math.min(options.length, 25)).addOptions(options));
