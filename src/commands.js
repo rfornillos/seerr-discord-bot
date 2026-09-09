@@ -43,7 +43,7 @@ function makeRequestCommand(lib) {
         results = await seer.search(query);
         results = results.filter(r => r.mediaType === lib.mediaType);
       } catch (e) {
-        return interaction.editReply({ embeds: [embeds.errorEmbed(`Could not reach Jellyseerr: ${e.message}`)] });
+        return interaction.editReply({ embeds: [embeds.errorEmbed(`Could not reach seerr: ${e.message}`)] });
       }
       if (!results.length) {
         return interaction.editReply({ embeds: [embeds.errorEmbed(`No ${lib.label} found for **${query}**`)] });
@@ -58,23 +58,23 @@ function makeRequestCommand(lib) {
 }
 
 const linkCommand = {
-  data: new SlashCommandBuilder().setName('link').setDescription('Link your Discord account to a Jellyseerr user').addStringOption(o => o.setName('email').setDescription('Your Jellyseerr account email').setRequired(true)),
+  data: new SlashCommandBuilder().setName('link').setDescription('Link your Discord account to your Plex user').addStringOption(o => o.setName('email').setDescription('Your Plex account email').setRequired(true)),
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const email = interaction.options.getString('email').trim().toLowerCase();
     let users;
     try { users = await seer.getUsers(); } catch (e) {
-      return interaction.editReply({ embeds: [embeds.errorEmbed(`Could not reach Jellyseerr: ${e.message}`)] });
+      return interaction.editReply({ embeds: [embeds.errorEmbed(`Could not reach seerr: ${e.message}`)] });
     }
     const match = users.find(u => u.email?.toLowerCase() === email);
-    if (!match) return interaction.editReply({ embeds: [embeds.errorEmbed(`No Jellyseerr user found with email **${email}**.\n\nMake sure you have an account in Jellyseerr first.`)] });
+    if (!match) return interaction.editReply({ embeds: [embeds.errorEmbed(`No Plex user found with email **${email}**.\n\nMake sure you have an account in Plex first.`)] });
     store.linkUser(interaction.user.id, match.id, match.displayName || match.username);
-    await interaction.editReply({ embeds: [embeds.successEmbed('Account linked!', `Your Discord account is now linked to Jellyseerr user **${match.displayName || match.username}**.`)] });
+    await interaction.editReply({ embeds: [embeds.successEmbed('Account linked!', `Your Discord account is now linked to Plex user **${match.displayName || match.username}**.`)] });
   },
 };
 
 const unlinkCommand = {
-  data: new SlashCommandBuilder().setName('unlink').setDescription('Unlink your Discord account from Jellyseerr'),
+  data: new SlashCommandBuilder().setName('unlink').setDescription('Unlink your Discord account from Plex'),
   async execute(interaction) {
     const linked = store.getLinkedUser(interaction.user.id);
     if (!linked) return interaction.reply({ embeds: [embeds.infoEmbed('Not linked', 'Your account is not currently linked.')], ephemeral: true });
@@ -84,17 +84,17 @@ const unlinkCommand = {
 };
 
 const whoisCommand = {
-  data: new SlashCommandBuilder().setName('whois').setDescription('Check which Jellyseerr account a Discord user is linked to').addUserOption(o => o.setName('user').setDescription('Discord user to check').setRequired(false)),
+  data: new SlashCommandBuilder().setName('whois').setDescription('Check which Plex account a Discord user is linked to').addUserOption(o => o.setName('user').setDescription('Discord user to check').setRequired(false)),
   async execute(interaction) {
     const target = interaction.options.getUser('user') || interaction.user;
     const linked = store.getLinkedUser(target.id);
-    if (!linked) return interaction.reply({ embeds: [embeds.infoEmbed('Not linked', `**${target.username}** is not linked to any Jellyseerr account.`)], ephemeral: true });
-    await interaction.reply({ embeds: [embeds.infoEmbed('Account linked', `**${target.username}** → Jellyseerr user **${linked.seerUserName}** (ID: ${linked.seerUserId})\nLinked: <t:${Math.floor(new Date(linked.linkedAt).getTime() / 1000)}:R>`)], ephemeral: true });
+    if (!linked) return interaction.reply({ embeds: [embeds.infoEmbed('Not linked', `**${target.username}** is not linked to any Plex account.`)], ephemeral: true });
+    await interaction.reply({ embeds: [embeds.infoEmbed('Account linked', `**${target.username}** → Plex user **${linked.seerUserName}** (ID: ${linked.seerUserId})\nLinked: <t:${Math.floor(new Date(linked.linkedAt).getTime() / 1000)}:R>`)], ephemeral: true });
   },
 };
 
 const linklistCommand = {
-  data: new SlashCommandBuilder().setName('linklist').setDescription('List all Discord <-> Jellyseerr user links (admin only)'),
+  data: new SlashCommandBuilder().setName('linklist').setDescription('List all Discord <-> Plex user links (admin only)'),
   async execute(interaction) {
     if (process.env.ADMIN_ROLE_ID && !interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID)) {
       return interaction.reply({ embeds: [embeds.errorEmbed('Admin only.')], ephemeral: true });
@@ -108,7 +108,7 @@ const linklistCommand = {
 };
 
 const statusCommand = {
-  data: new SlashCommandBuilder().setName('seer-status').setDescription('Check if the bot can reach Jellyseerr'),
+  data: new SlashCommandBuilder().setName('seer-status').setDescription('Check if the bot can reach seerr'),
   async execute(interaction) {
     await interaction.deferReply({ ephemeral: true });
     const ok = await seer.testConnection();
