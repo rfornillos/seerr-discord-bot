@@ -42,13 +42,20 @@ async function handleSelectMedia(interaction) {
   }
   const mediaInfo = details.mediaInfo;
   if (mediaInfo?.status === 5) return interaction.editReply({ embeds: [embeds.mediaEmbed(details, { status: 'available' }).setFooter({ text: 'Already available!' })], components: [] });
-  if (mediaInfo?.status && mediaInfo.status > 1) return interaction.editReply({ embeds: [embeds.mediaEmbed(details, { status: seer.MEDIA_STATUS[mediaInfo.status] }).setFooter({ text: 'Already requested in Jellyseerr' })], components: [] });
+  // For movies there are no seasons to fall back on, so any status > 1 means it's already been requested.
+  if (mediaType === 'movie' && mediaInfo?.status && mediaInfo.status > 1) return interaction.editReply({ embeds: [embeds.mediaEmbed(details, { status: seer.MEDIA_STATUS[mediaInfo.status] }).setFooter({ text: 'Already requested in Jellyseerr' })], components: [] });
   interaction.client._detailsCache = interaction.client._detailsCache || new Map();
   interaction.client._detailsCache.set(interaction.user.id, { details, libraryName: lib.name, expiresAt: Date.now() + 5 * 60 * 1000 });
   if (mediaType === 'tv') {
+    // Only offer seasons that haven't already been requested/processed/made available.
     const seasonSelect = embeds.buildSeasonSelect(details);
     if (seasonSelect) {
       return interaction.editReply({ embeds: [embeds.mediaEmbed(details).setFooter({ text: 'Step 2 — choose seasons (' + lib.label + ')' })], components: [seasonSelect] });
+    }
+    // No seasons left to pick: either nothing has ever been requested (shouldn't happen if buildSeasonSelect
+    // returns null only when every season is already tracked) or every season is already requested/available.
+    if (mediaInfo?.status && mediaInfo.status > 1) {
+      return interaction.editReply({ embeds: [embeds.mediaEmbed(details, { status: seer.MEDIA_STATUS[mediaInfo.status] }).setFooter({ text: 'All seasons already requested in Jellyseerr' })], components: [] });
     }
   }
   await interaction.editReply({ embeds: [embeds.mediaEmbed(details).setFooter({ text: 'Library: ' + lib.label + ' — confirm below' })], components: [embeds.buildConfirmRow(mediaType, tmdbId, null)] });
@@ -62,7 +69,10 @@ async function handleSelectSeasons(interaction) {
   const lib = getLibraryByName(libraryName);
   const selected = interaction.values;
   const isAll = selected.includes('all');
-  const allSeasonNumbers = Array.isArray(details.seasons) ? details.seasons.filter(s => s.seasonNumber > 0).map(s => s.seasonNumber) : [];
+  const requestedSeasonNumbers = new Set((details.mediaInfo?.seasons || []).map(s => s.seasonNumber));
+  const allSeasonNumbers = Array.isArray(details.seasons)
+    ? details.seasons.filter(s => s.seasonNumber > 0 && !requestedSeasonNumbers.has(s.seasonNumber)).map(s => s.seasonNumber)
+    : [];
   const seasons = isAll ? allSeasonNumbers : selected.map(Number);
   const confirmRow = embeds.buildConfirmRow('tv', details.id, seasons);
   const seasonText = isAll ? 'All seasons' : 'Season(s): ' + seasons.join(', ');
