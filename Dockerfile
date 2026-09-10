@@ -4,4 +4,4 @@ COPY package*.json ./
 RUN npm install --production
 COPY . .
 RUN mkdir -p data
-CMD ["node", "src/index.js"]
+CMD ["sh", "-c", "node src/register.js && node src/index.js"]
